@@ -141,11 +141,11 @@ async function getDiskInfo() {
       const pct    = parseFloat(cols[5].replace('%', '')) || 0;
       const mount  = cols.slice(6).join(' ');
 
-      if (SKIP_FS.has(fstype))                                    continue;
-      if (size === 0)                                             continue;
-      if (source.startsWith('shm'))                               continue;
-      if (SKIP_MOUNT_PREFIX.some(p => mount.startsWith(p)))      continue;
-      if (hasHostMount && !mount.startsWith('/host'))             continue;
+      if (SKIP_FS.has(fstype))                               continue;
+      if (size === 0)                                        continue;
+      if (source.startsWith('shm'))                          continue;
+      if (SKIP_MOUNT_PREFIX.some(p => mount.startsWith(p))) continue;
+      if (hasHostMount && !mount.startsWith('/host'))        continue;
       if (seen.has(source)) continue;
       seen.add(source);
 
@@ -241,6 +241,17 @@ async function getNetworkRates() {
 
 app.get('/health', (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
+// Lightweight endpoint — only reads /proc/uptime, polled every 1s by the frontend
+app.get('/api/uptime', async (_req, res) => {
+  try {
+    const value = await getUptime();
+    res.json({ uptime: value, timestamp: new Date().toISOString() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Full stats endpoint — polled every 2s by the frontend
 app.get('/api/stats', async (_req, res) => {
   try {
     const [cpuUsages, cpuInfo, memory, uptime, disks, osInfo, network] = await Promise.all([

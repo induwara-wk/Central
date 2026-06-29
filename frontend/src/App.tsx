@@ -59,7 +59,8 @@ interface SystemStats {
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
 
-const POLL_MS = 1000
+const STATS_POLL_MS  = 2000   // CPU, RAM, disk, network, OS
+const UPTIME_POLL_MS = 1000   // uptime only
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITIES
@@ -220,9 +221,9 @@ function StatRow({
   value,
   accent = false,
 }: {
-  label:    string
-  value:    string
-  accent?:  boolean
+  label:   string
+  value:   string
+  accent?: boolean
 }) {
   return (
     <div className="flex justify-between items-baseline text-sm">
@@ -297,17 +298,20 @@ function CoreGrid({ perCore }: { perCore: number[] }) {
 // ═══════════════════════════════════════════════════════════════
 
 export default function App() {
-  const [stats,     setStats]     = useState<SystemStats | null>(null)
-  const [error,     setError]     = useState<string | null>(null)
-  const [loading,   setLoading]   = useState(true)
-  const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
+  const [stats,      setStats]      = useState<SystemStats | null>(null)
+  const [liveUptime, setLiveUptime] = useState<number | null>(null)
+  const [error,      setError]      = useState<string | null>(null)
+  const [loading,    setLoading]    = useState(true)
+  const [updatedAt,  setUpdatedAt]  = useState<Date | null>(null)
 
+  // Fetches everything: CPU, RAM, disk, network, OS, uptime
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch('/api/stats')
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data: SystemStats = await res.json()
       setStats(data)
+      setLiveUptime(data.uptime)   // seed the fast uptime from the full response
       setUpdatedAt(new Date())
       setError(null)
     } catch (e) {
@@ -317,11 +321,32 @@ export default function App() {
     }
   }, [])
 
+  // Fetches only uptime — lightweight, runs every 1s
+  const fetchUptime = useCallback(async () => {
+    try {
+      const res = await fetch('/api/uptime')
+      if (!res.ok) return
+      const data: { uptime: number } = await res.json()
+      setLiveUptime(data.uptime)
+    } catch {
+      // silently ignore — the main stats poll handles error display
+    }
+  }, [])
+
+  // Full stats every 2s
   useEffect(() => {
     fetchStats()
-    const id = setInterval(fetchStats, POLL_MS)
+    const id = setInterval(fetchStats, STATS_POLL_MS)
     return () => clearInterval(id)
   }, [fetchStats])
+
+  // Uptime only every 1s — starts after the first stats load so there is
+  // always a valid uptime value before this interval fires
+  useEffect(() => {
+    if (!stats) return            // wait until the first full load
+    const id = setInterval(fetchUptime, UPTIME_POLL_MS)
+    return () => clearInterval(id)
+  }, [stats, fetchUptime])
 
   // ── Loading state ────────────────────────────────────────────
   if (loading) return <LoadingScreen />
@@ -340,7 +365,12 @@ export default function App() {
     )
   }
 
-  const { cpu, ram, storage, uptime, os: sysOs, network } = stats
+  const { cpu, ram, storage, os: sysOs, network } = stats
+
+  // liveUptime updates every 1s; falls back to stats.uptime on the very
+  // first render before the fast interval has fired
+  const displayUptime = liveUptime ?? stats.uptime
+
   const activeNet = network.filter(n => n.rxSec > 0 || n.txSec > 0).slice(0, 3)
 
   // ── Dashboard ────────────────────────────────────────────────
@@ -351,8 +381,10 @@ export default function App() {
         {/* ── Header ─────────────────────────────────────────── */}
         <header className="flex items-start justify-between">
           <div>
-            <h1 className="font-mono font-bold tracking-widest uppercase"
-              style={{ fontSize: '1.1rem', color: '#00e0a0', textShadow: '0 0 20px rgba(0,224,160,0.3)' }}>
+            <h1
+              className="font-mono font-bold tracking-widest uppercase"
+              style={{ fontSize: '1.1rem', color: '#00e0a0', textShadow: '0 0 20px rgba(0,224,160,0.3)' }}
+            >
               Central
             </h1>
             <p className="font-mono text-sm text-ink mt-0.5">
@@ -441,7 +473,7 @@ export default function App() {
                   textShadow: '0 0 18px rgba(0,224,160,0.35)',
                 }}
               >
-                {fmtUptime(uptime)}
+                {fmtUptime(displayUptime)}
               </span>
             </div>
 
@@ -527,7 +559,7 @@ export default function App() {
         {/* ── Footer ─────────────────────────────────────────── */}
         <footer className="text-center">
           <p className="font-mono text-xs" style={{ color: '#1e1e32' }}>
-            central · polling every {POLL_MS / 1000}s
+            Made with ❤️ by Induwara
           </p>
         </footer>
 
