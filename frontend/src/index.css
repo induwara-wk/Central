@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { color-scheme: dark; }
+
+  html, body, #root {
+    min-height: 100vh;
+    background-color: #0c0c14;
+    color: #d4d4f0;
+  }
+
+  /* Subtle scanline texture — the design's signature texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.04) 2px,
+      rgba(0, 0, 0, 0.04) 4px
+    );
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  ::-webkit-scrollbar            { width: 6px; }
+  ::-webkit-scrollbar-track      { background: #0c0c14; }
+  ::-webkit-scrollbar-thumb      { background: #1e1e32; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover{ background: #2e2e4a; }
+}
+
+@layer utilities {
+  .font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .tabular   { font-variant-numeric: tabular-nums; }
+}

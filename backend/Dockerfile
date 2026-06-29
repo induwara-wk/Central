@@ -1,0 +1,14 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY server.js ./
+
+EXPOSE 3001
+
+USER node
+
+CMD ["node", "server.js"]

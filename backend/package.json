@@ -1,0 +1,20 @@
+{
+  "name": "central-api",
+  "version": "1.0.0",
+  "description": "Central - system monitoring API. Reads /proc directly, no monitoring libs.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "author": "Induwara Arachchi",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  },
+
+  "engines": {
+    "node": ">=18"
+  }
+}
